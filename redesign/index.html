@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>レシート確認画面 リデザイン5案</title>
+<style>
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  body{margin:0; background:#e9eaee; color:#111; font-family:-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif;}
+  .board-head{max-width:860px; margin:0 auto; padding:28px 18px 6px;}
+  .board-head h1{font-size:22px; margin:0 0 6px;}
+  .board-head p{margin:0; color:#555; font-size:14px; line-height:1.7;}
+  .variant{max-width:860px; margin:0 auto; padding:26px 18px 8px;}
+  .variant h2{font-size:18px; margin:0 0 4px;}
+  .variant .concept{color:#555; font-size:13px; margin:0 0 14px; line-height:1.7;}
+  .phone{width:min(380px,100%); margin:0 auto; background:#fff; border-radius:28px; box-shadow:0 10px 34px rgba(0,0,0,.18); overflow:hidden; border:1px solid #d7d8dd;}
+  .board-foot{max-width:860px; margin:0 auto; padding:10px 18px 44px; color:#555; font-size:13px;}
+  /* 共通部品 */
+  .fld label{display:block; font-size:12px; font-weight:700; color:#666; margin-bottom:5px;}
+  .inp{width:100%; border:1px solid #d9dae0; border-radius:10px; padding:10px 12px; font-size:16px; background:#fff; color:#111;}
+  .chips{display:flex; flex-wrap:wrap; gap:6px;}
+  .chipbtn{border:1px solid #d9dae0; background:#fff; border-radius:999px; padding:6px 11px; font-size:13px; color:#333;}
+  .chipbtn.sel{background:#111; color:#fff; border-color:#111; font-weight:700;}
+  .chipbtn.purp{border-style:dashed;}
+  .chipbtn.purp.sel{background:#b3261e; border-color:#b3261e; border-style:solid;}
+  .seg{display:flex; border:1px solid #d9dae0; border-radius:10px; overflow:hidden;}
+  .seg button{flex:1; border:none; background:#fff; padding:9px 2px; font-size:13px; color:#333;}
+  .seg button.sel{background:#111; color:#fff; font-weight:700;}
+  textarea.inp{resize:none; min-height:44px; font-size:14px;}
+  .btn{display:block; width:100%; border:none; border-radius:12px; padding:13px; font-size:15px; font-weight:700;}
+  .btn-pri{background:#0b62d6; color:#fff;}
+  .btn-ghost{background:#f1f2f5; color:#111;}
+  .thumb{object-fit:cover; border-radius:8px; border:1px solid #e2e3e8; background:linear-gradient(135deg,#f6e8d8,#e8f0e4); display:flex; align-items:center; justify-content:center; color:#8a6d3b; font-weight:700;}
+</style>
+</head>
+<body>
+<div class="board-head">
+  <h1>レシート確認画面 リデザイン5案</h1>
+  <p>サンプルは「スシロー秋葉原中央通り店」のレシート。全案とも今の機能（写真・日付・店名・金額・税率・品目・インボイス・用途・科目・事業/家事・支払方法・メモ・保存/確定）は全部入り。密度と配置の考え方だけを変えています。気に入った案の番号を教えてください。</p>
+</div>
+
+<!-- ================= 案1 行リスト ================= -->
+<div class="variant">
+  <h2>案1 ─ 行リスト（設定アプリ風）</h2>
+  <p class="concept">ラベル左・値右の行で積み上げ、区切りは罫線だけ。カードも影も捨てて、縦の余白を最小化した実務型。</p>
+  <div class="phone">
+    <style>
+      .v1{font-size:15px;}
+      .v1 .bar{display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-bottom:1px solid #e6e7eb;}
+      .v1 .bar b{font-size:16px;}
+      .v1 .bar span{color:#0b62d6; font-size:14px;}
+      .v1 .hero{display:flex; gap:12px; padding:12px 16px; border-bottom:1px solid #e6e7eb; align-items:center;}
+      .v1 .hero .thumb{width:54px; height:68px; font-size:11px;}
+      .v1 .hero .store{font-weight:700; font-size:16px;}
+      .v1 .hero .amt{font-size:20px; font-weight:800;}
+      .v1 .hero .sub{color:#777; font-size:12px;}
+      .v1 .row{display:flex; align-items:center; gap:10px; padding:9px 16px; border-bottom:1px solid #e6e7eb;}
+      .v1 .row label{width:86px; flex:none; font-size:13px; color:#666; font-weight:700;}
+      .v1 .row .val{flex:1; min-width:0;}
+      .v1 .row input{width:100%; border:none; font-size:15px; padding:2px 0; background:transparent; color:#111;}
+      .v1 .sect{padding:10px 16px 2px; font-size:12px; font-weight:800; color:#999; letter-spacing:.08em;}
+      .v1 .pad{padding:8px 16px 12px; border-bottom:1px solid #e6e7eb;}
+      .v1 .actions{display:flex; gap:8px; padding:12px 16px 16px;}
+      .v1 .actions .btn{padding:12px;}
+    </style>
+    <div class="v1">
+      <div class="bar"><span>✕ 閉じる</span><b>レシート確認</b><span>AI再読取</span></div>
+      <div class="hero"><div class="thumb">領収書</div><div><div class="store">スシロー秋葉原中央通り店</div><div class="amt">¥4,860</div><div class="sub">2026-11-19（木）・読取済</div></div></div>
+      <div class="row"><label>日付</label><div class="val"><input value="2026-11-19"></div></div>
+      <div class="row"><label>店名</label><div class="val"><input value="スシロー秋葉原中央通り店"></div></div>
+      <div class="row"><label>合計</label><div class="val"><input value="4,860"></div></div>
+      <div class="row"><label>税10%</label><div class="val"><input value="4,860"></div></div>
+      <div class="row"><label>税8%</label><div class="val"><input value="0"></div></div>
+      <div class="row"><label>登録番号</label><div class="val"><input placeholder="T1234567890123"></div></div>
+      <div class="sect">用途</div>
+      <div class="pad"><div class="chips">
+        <button class="chipbtn purp sel">接待（ゲストと食事）</button><button class="chipbtn purp">ツアー交通費</button><button class="chipbtn purp">ツアー立替</button><button class="chipbtn purp">レッスン教材</button><button class="chipbtn purp">自分用（家事）</button>
+      </div></div>
+      <div class="sect">勘定科目</div>
+      <div class="pad"><div class="chips">
+        <button class="chipbtn sel">接待交際費</button><button class="chipbtn">旅費交通費</button><button class="chipbtn">会議費</button><button class="chipbtn">消耗品費</button><button class="chipbtn">通信費</button><button class="chipbtn">新聞図書費</button>
+      </div></div>
+      <div class="row"><label>事業/家事</label><div class="val"><div class="seg"><button class="sel">事業</button><button>按分</button><button>家事</button></div></div></div>
+      <div class="row"><label>支払方法</label><div class="val"><div class="seg"><button>現金</button><button class="sel">クレジットカード</button><button>事業主借</button></div></div></div>
+      <div class="row"><label>メモ</label><div class="val"><input value="ゲスト接待"></div></div>
+      <div class="actions"><button class="btn btn-ghost">保存する</button><button class="btn btn-pri">確定する</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= 案2 カード圧縮 ================= -->
+<div class="variant">
+  <h2>案2 ─ カード圧縮（今の進化形）</h2>
+  <p class="concept">今の画面の骨格はそのままに、カード内の詰め物とカード同士の間隔を徹底的に圧縮。写真は上部に小さく横置きして縦を節約。</p>
+  <div class="phone">
+    <style>
+      .v2{background:#f4f5f7; padding:10px 10px 14px;}
+      .v2 .card{background:#fff; border-radius:14px; padding:10px 12px; margin-bottom:8px;}
+      .v2 .card h3{margin:0 0 8px; font-size:12px; color:#888; letter-spacing:.06em;}
+      .v2 .top{display:flex; gap:10px; align-items:center;}
+      .v2 .top .thumb{width:46px; height:58px; font-size:10px; flex:none;}
+      .v2 .top .amt{font-size:19px; font-weight:800;}
+      .v2 .grid2{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
+      .v2 .fld{margin-bottom:8px;}
+      .v2 .fld:last-child{margin-bottom:0;}
+      .v2 .inp{padding:8px 10px; font-size:15px;}
+      .v2 .actions{display:flex; gap:8px;}
+      .v2 .actions .btn{padding:12px;}
+    </style>
+    <div class="v2">
+      <div class="card"><div class="top"><div class="thumb">領収書</div><div style="flex:1;"><div style="font-weight:700;">スシロー秋葉原中央通り店</div><div style="color:#777; font-size:12px;">2026-11-19 ・ 読取済</div></div><div class="amt">¥4,860</div></div></div>
+      <div class="card"><h3>基本</h3>
+        <div class="grid2">
+          <div class="fld"><label>日付</label><input class="inp" value="2026-11-19"></div>
+          <div class="fld"><label>合計（税込）</label><input class="inp" value="4,860"></div>
+        </div>
+        <div class="fld"><label>店名・取引先</label><input class="inp" value="スシロー秋葉原中央通り店"></div>
+        <div class="grid2">
+          <div class="fld"><label>うち10%</label><input class="inp" value="4,860"></div>
+          <div class="fld"><label>うち8%（軽減）</label><input class="inp" value="0"></div>
+        </div>
+        <div class="fld"><label>インボイス登録番号</label><input class="inp" placeholder="T1234567890123"></div>
+      </div>
+      <div class="card"><h3>分類</h3>
+        <div class="fld"><label>用途</label><div class="chips">
+          <button class="chipbtn purp sel">接待（ゲストと食事）</button><button class="chipbtn purp">ツアー交通費</button><button class="chipbtn purp">ツアー立替</button><button class="chipbtn purp">レッスン教材</button><button class="chipbtn purp">自分用（家事）</button>
+        </div></div>
+        <div class="fld"><label>勘定科目</label><div class="chips">
+          <button class="chipbtn sel">接待交際費</button><button class="chipbtn">旅費交通費</button><button class="chipbtn">会議費</button><button class="chipbtn">消耗品費</button><button class="chipbtn">通信費</button><button class="chipbtn">新聞図書費</button>
+        </div></div>
+        <div class="grid2">
+          <div class="fld"><label>事業/家事</label><div class="seg"><button class="sel">事業</button><button>按分</button><button>家事</button></div></div>
+          <div class="fld"><label>支払方法</label><div class="seg"><button>現金</button><button class="sel">カード</button><button>事業主借</button></div></div>
+        </div>
+      </div>
+      <div class="card"><h3>メモ</h3><textarea class="inp">ゲスト接待</textarea></div>
+      <div class="actions"><button class="btn btn-ghost">保存する</button><button class="btn btn-pri">確定する</button></div>
+    </div>
+  </div>
+</div>
+<!-- ================= 案3 サマリー固定 ================= -->
+<div class="variant">
+  <h2>案3 ─ サマリー固定＋下部バー</h2>
+  <p class="concept">店名・金額・科目の要約が常に上部に残り、確定ボタンは下部固定バー。スクロールしても「いま何を確定するか」が見失われない。</p>
+  <div class="phone">
+    <style>
+      .v3{position:relative; padding-bottom:64px;}
+      .v3 .sum{position:sticky; top:0; background:#111; color:#fff; padding:12px 16px; display:flex; gap:12px; align-items:center; z-index:2;}
+      .v3 .sum .thumb{width:40px; height:50px; font-size:10px; border:none;}
+      .v3 .sum .store{font-weight:700; font-size:14px;}
+      .v3 .sum .meta{color:#bbb; font-size:11px;}
+      .v3 .sum .amt{margin-left:auto; font-size:19px; font-weight:800;}
+      .v3 .sum .cat{color:#ffd9d4; font-size:11px; font-weight:700;}
+      .v3 .body{padding:12px 16px 4px;}
+      .v3 .fld{margin-bottom:10px;}
+      .v3 .grid2{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
+      .v3 .footbar{position:absolute; left:0; right:0; bottom:0; display:flex; gap:8px; padding:10px 12px calc(10px + env(safe-area-inset-bottom)); background:rgba(255,255,255,.96); border-top:1px solid #e6e7eb;}
+      .v3 .footbar .btn{padding:12px;}
+    </style>
+    <div class="v3">
+      <div class="sum"><div class="thumb">領収書</div><div><div class="store">スシロー秋葉原中央通り店</div><div class="cat">接待交際費 ・ 事業 ・ カード</div><div class="meta">2026-11-19 ・ 読取済</div></div><div class="amt">¥4,860</div></div>
+      <div class="body">
+        <div class="grid2">
+          <div class="fld"><label>日付</label><input class="inp" value="2026-11-19"></div>
+          <div class="fld"><label>合計（税込）</label><input class="inp" value="4,860"></div>
+        </div>
+        <div class="fld"><label>店名・取引先</label><input class="inp" value="スシロー秋葉原中央通り店"></div>
+        <div class="grid2">
+          <div class="fld"><label>うち10%</label><input class="inp" value="4,860"></div>
+          <div class="fld"><label>うち8%（軽減）</label><input class="inp" value="0"></div>
+        </div>
+        <div class="fld"><label>用途</label><div class="chips">
+          <button class="chipbtn purp sel">接待（ゲストと食事）</button><button class="chipbtn purp">ツアー交通費</button><button class="chipbtn purp">ツアー立替</button><button class="chipbtn purp">レッスン教材</button><button class="chipbtn purp">自分用（家事）</button>
+        </div></div>
+        <div class="fld"><label>勘定科目</label><div class="chips">
+          <button class="chipbtn sel">接待交際費</button><button class="chipbtn">旅費交通費</button><button class="chipbtn">会議費</button><button class="chipbtn">消耗品費</button><button class="chipbtn">通信費</button><button class="chipbtn">新聞図書費</button>
+        </div></div>
+        <div class="grid2">
+          <div class="fld"><label>事業/家事</label><div class="seg"><button class="sel">事業</button><button>按分</button><button>家事</button></div></div>
+          <div class="fld"><label>支払方法</label><div class="seg"><button>現金</button><button class="sel">カード</button><button>事業主借</button></div></div>
+        </div>
+        <div class="fld"><label>メモ・摘要</label><textarea class="inp">ゲスト接待</textarea></div>
+      </div>
+      <div class="footbar"><button class="btn btn-ghost">保存する</button><button class="btn btn-pri">確定する</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= 案4 グリッド密 ================= -->
+<div class="variant">
+  <h2>案4 ─ グリッド密（1画面完結型）</h2>
+  <p class="concept">金額系も分類系も2カラムに畳んで、スクロールなしで全部見渡せる密度優先型。チップも小さくして科目を一段に収める。</p>
+  <div class="phone">
+    <style>
+      .v4{padding:12px 12px 14px; font-size:14px;}
+      .v4 .head{display:flex; gap:10px; align-items:center; margin-bottom:10px;}
+      .v4 .head .thumb{width:44px; height:56px; font-size:10px;}
+      .v4 .head .store{font-weight:700; font-size:15px;}
+      .v4 .head .amt{font-size:19px; font-weight:800;}
+      .v4 .grid2{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
+      .v4 .fld{margin-bottom:8px;}
+      .v4 .fld label{font-size:11px; margin-bottom:3px;}
+      .v4 .inp{padding:8px 10px; font-size:15px; border-radius:8px;}
+      .v4 .chipbtn{padding:5px 9px; font-size:12px;}
+      .v4 .chips{gap:5px;}
+      .v4 .seg button{padding:7px 2px; font-size:12px;}
+      .v4 .secttl{font-size:11px; font-weight:800; color:#999; letter-spacing:.08em; margin:10px 0 5px;}
+      .v4 .actions{display:flex; gap:8px; margin-top:12px;}
+      .v4 .actions .btn{padding:11px;}
+      .v4 textarea.inp{min-height:36px;}
+    </style>
+    <div class="v4">
+      <div class="head"><div class="thumb">領収書</div><div style="flex:1;"><div class="store">スシロー秋葉原中央通り店</div><div style="color:#777; font-size:12px;">2026-11-19 ・ 読取済</div></div><div class="amt">¥4,860</div></div>
+      <div class="grid2">
+        <div class="fld"><label>日付</label><input class="inp" value="2026-11-19"></div>
+        <div class="fld"><label>合計（税込）</label><input class="inp" value="4,860"></div>
+        <div class="fld"><label>うち10%</label><input class="inp" value="4,860"></div>
+        <div class="fld"><label>うち8%（軽減）</label><input class="inp" value="0"></div>
+      </div>
+      <div class="fld"><label>店名・取引先</label><input class="inp" value="スシロー秋葉原中央通り店"></div>
+      <div class="fld"><label>インボイス登録番号</label><input class="inp" placeholder="T1234567890123"></div>
+      <div class="secttl">用途</div>
+      <div class="chips">
+        <button class="chipbtn purp sel">接待（ゲストと食事）</button><button class="chipbtn purp">ツアー交通費</button><button class="chipbtn purp">ツアー立替</button><button class="chipbtn purp">レッスン教材</button><button class="chipbtn purp">通信・サブスク</button><button class="chipbtn purp">自分用（家事）</button>
+      </div>
+      <div class="secttl">勘定科目</div>
+      <div class="chips">
+        <button class="chipbtn sel">接待交際費</button><button class="chipbtn">旅費交通費</button><button class="chipbtn">会議費</button><button class="chipbtn">消耗品費</button><button class="chipbtn">通信費</button><button class="chipbtn">新聞図書費</button><button class="chipbtn">雑費</button><button class="chipbtn">地代家賃</button>
+      </div>
+      <div class="grid2" style="margin-top:10px;">
+        <div class="fld"><label>事業/家事</label><div class="seg"><button class="sel">事業</button><button>按分</button><button>家事</button></div></div>
+        <div class="fld"><label>支払方法</label><div class="seg"><button>現金</button><button class="sel">カード</button><button>事業主借</button></div></div>
+      </div>
+      <div class="fld"><label>メモ・摘要</label><textarea class="inp">ゲスト接待</textarea></div>
+      <div class="actions"><button class="btn btn-ghost">保存する</button><button class="btn btn-pri">確定する</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= 案5 下線ミニマル ================= -->
+<div class="variant">
+  <h2>案5 ─ 下線ミニマル（文字中心）</h2>
+  <p class="concept">入力欄の箱をやめて下線だけにし、装飾を消して文字の強弱で読ませる。余白は「間」として残しつつ、行間は詰めた静かな型。</p>
+  <div class="phone">
+    <style>
+      .v5{padding:18px 20px 20px;}
+      .v5 .kicker{font-size:11px; letter-spacing:.22em; color:#b3261e; font-weight:800; margin-bottom:6px;}
+      .v5 .store{font-size:19px; font-weight:800; line-height:1.35;}
+      .v5 .amtline{display:flex; align-items:baseline; gap:10px; margin:4px 0 2px;}
+      .v5 .amtline .amt{font-size:26px; font-weight:800;}
+      .v5 .amtline .date{color:#888; font-size:13px;}
+      .v5 .photo{display:flex; gap:10px; align-items:center; margin:10px 0 4px;}
+      .v5 .photo .thumb{width:38px; height:48px; font-size:9px;}
+      .v5 .photo span{font-size:12px; color:#0b62d6;}
+      .v5 .fld{margin-top:13px;}
+      .v5 .fld label{font-size:11px; color:#999; margin-bottom:2px; letter-spacing:.05em;}
+      .v5 .u{width:100%; border:none; border-bottom:1px solid #dcdde2; padding:5px 0 7px; font-size:16px; background:transparent; color:#111; border-radius:0;}
+      .v5 .u:focus{outline:none; border-bottom-color:#111;}
+      .v5 .grid2{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+      .v5 .chipbtn{border:none; border-bottom:1px solid #dcdde2; border-radius:0; padding:5px 2px; margin-right:10px; font-size:13px;}
+      .v5 .chipbtn.sel{background:none; color:#b3261e; border-bottom:2px solid #b3261e; font-weight:800;}
+      .v5 .chips{gap:0;}
+      .v5 .seg{border:none; gap:14px;}
+      .v5 .seg button{background:none; padding:4px 2px; border-bottom:1px solid #dcdde2; font-size:13px;}
+      .v5 .seg button.sel{background:none; color:#b3261e; border-bottom:2px solid #b3261e; font-weight:800;}
+      .v5 .actions{margin-top:20px; display:flex; gap:10px;}
+      .v5 .btn-pri{background:#111;}
+      .v5 .btn{border-radius:999px; padding:12px;}
+    </style>
+    <div class="v5">
+      <div class="kicker">RECEIPT</div>
+      <div class="store">スシロー秋葉原中央通り店</div>
+      <div class="amtline"><div class="amt">¥4,860</div><div class="date">2026年11月19日（木）・ 読取済</div></div>
+      <div class="photo"><div class="thumb">領収書</div><span>写真を表示</span><span style="color:#888;">AIで再読取</span></div>
+      <div class="grid2">
+        <div class="fld"><label>日付</label><input class="u" value="2026-11-19"></div>
+        <div class="fld"><label>合計（税込）</label><input class="u" value="4,860"></div>
+        <div class="fld"><label>うち10%</label><input class="u" value="4,860"></div>
+        <div class="fld"><label>うち8%（軽減）</label><input class="u" value="0"></div>
+      </div>
+      <div class="fld"><label>インボイス登録番号</label><input class="u" placeholder="T1234567890123"></div>
+      <div class="fld"><label>用途</label><div class="chips">
+        <button class="chipbtn sel">接待（ゲストと食事）</button><button class="chipbtn">ツアー交通費</button><button class="chipbtn">ツアー立替</button><button class="chipbtn">レッスン教材</button><button class="chipbtn">自分用（家事）</button>
+      </div></div>
+      <div class="fld"><label>勘定科目</label><div class="chips">
+        <button class="chipbtn sel">接待交際費</button><button class="chipbtn">旅費交通費</button><button class="chipbtn">会議費</button><button class="chipbtn">消耗品費</button><button class="chipbtn">通信費</button><button class="chipbtn">新聞図書費</button>
+      </div></div>
+      <div class="grid2">
+        <div class="fld"><label>事業/家事</label><div class="seg"><button class="sel">事業</button><button>按分</button><button>家事</button></div></div>
+        <div class="fld"><label>支払方法</label><div class="seg"><button>現金</button><button class="sel">カード</button><button>事業主借</button></div></div>
+      </div>
+      <div class="fld"><label>メモ・摘要</label><input class="u" value="ゲスト接待"></div>
+      <div class="actions"><button class="btn btn-ghost">保存する</button><button class="btn btn-pri">確定する</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="board-foot">選んだ案の番号をチャットで教えてください。その案を本物のアプリへ実装します。要素の組み替え（例：案3の固定バー＋案1の行リスト）もできます。</div>
+</body>
+</html>
