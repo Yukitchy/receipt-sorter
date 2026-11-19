@@ -355,6 +355,11 @@ table.totals tr.total td{font-weight:700; border-top:2px solid var(--ink); borde
     <input type="text" id="edInvoice" placeholder="T1234567890123">
   </div>
   <div class="field">
+    <label>用途（ガイド用クイック選択）</label>
+    <div class="chips" id="edPurposes"></div>
+    <p class="note">押すと科目・事業/家事・メモがまとめて入ります。あとから直せます。</p>
+  </div>
+  <div class="field">
     <label>勘定科目</label>
     <div class="chips" id="edCats"></div>
   </div>
@@ -475,8 +480,14 @@ function loadRules(){
   try { return JSON.parse(localStorage.getItem(LS_RULES) || "{}"); } catch(e) { return {}; }
 }
 function saveRules(r){ localStorage.setItem(LS_RULES, JSON.stringify(r)); }
+const LS_FIXES = "rs_store_fixes_v1";
+function loadFixes(){
+  try { return JSON.parse(localStorage.getItem(LS_FIXES) || "{}"); } catch(e) { return {}; }
+}
+function saveFixes(f){ localStorage.setItem(LS_FIXES, JSON.stringify(f)); }
 let settings = loadSettings();
 let rules = loadRules();
+let storeFixes = loadFixes();
 
 /* ---------- データ層：IndexedDB（失敗時は localStorage にフォールバック） ---------- */
 const DB = {
@@ -759,6 +770,8 @@ function aiPrompt(){
     "- tax_8 は軽減税率8%対象の税込合計、tax_10 は10%対象の税込合計。内訳が読み取れない場合は合計額を主な税率側に入れ、もう一方を0にすること。\n" +
     "- invoice_number は T で始まる13桁の適格請求書発行事業者登録番号。なければ空文字。\n" +
     "- suggested_category は次の中から1つだけ選ぶこと: " + CATEGORIES.join("、") + "\n" +
+    "- store はレシート上部の大きなロゴ・ブランド名を優先して読むこと。カタカナのロゴ文字は誤読しやすいので、大手チェーンの正式名称として自然な表記に寄せること（例：「スガ-」ではなく「スシロー」）。運営会社の表記は store に使わない。\n" +
+    "- ユーザーはツアーガイドで、ゲストを飲食店へ案内することが多い。飲食店のレシートは suggested_category の第一候補を接待交際費とし、memo に「接待の可能性」と書くこと。ただし1人分と思われる少額の飲食はその限りではなく、memo に「1人分の可能性」と書くこと。\n" +
     "- 日付が読み取れない場合は date を空文字にする。読み取れない項目は無理に推測せず空文字または0にする。";
 }
 function parseAiJson(text){
@@ -805,7 +818,14 @@ async function runAI(id){
     const text = (data.content || []).filter(c => c.type === "text").map(c => c.text).join("");
     const j = parseAiJson(text);
     entry.date = /^\d{4}-\d{2}-\d{2}$/.test(j.date || "") ? j.date : entry.date;
-    entry.store = String(j.store || entry.store || "");
+    const rawStore = String(j.store || "");
+    if(rawStore){
+      entry.aiStore = rawStore;
+      /* 店名の読み替え：組み込み補正（ロゴ誤読の定番）→ 学習済みの直し の順で適用 */
+      let fixed = rawStore.replace(/^スガ[-ー・]/, "スシロー");
+      fixed = storeFixes[normalizeStore(fixed)] || storeFixes[normalizeStore(rawStore)] || fixed;
+      entry.store = fixed;
+    }
     entry.total = toInt(j.total) || entry.total;
     entry.tax8 = toInt(j.tax_8);
     entry.tax10 = toInt(j.tax_10);
@@ -983,6 +1003,36 @@ function paintCategoryChips(){
     b.classList.toggle("sel", b.dataset.cat === edCategory);
   });
 }
+/* ガイド業務でよく使う用途：押すと科目・事業/家事・メモをまとめて入れる */
+const PURPOSES = [
+  { label: "接待（ゲストと食事）", category: "接待交際費", usage: "business", memo: "ゲスト接待" },
+  { label: "ツアー交通費", category: "旅費交通費", usage: "business", memo: "ツアー交通費" },
+  { label: "ツアー立替（入場料など）", category: "旅費交通費", usage: "business", memo: "ツアー立替" },
+  { label: "レッスン教材", category: "新聞図書費", usage: "business", memo: "レッスン教材" },
+  { label: "通信・サブスク", category: "通信費", usage: "business", memo: "" },
+  { label: "機材・消耗品", category: "消耗品費", usage: "business", memo: "" },
+  { label: "自分用（家事）", category: "", usage: "private", memo: "私用" }
+];
+function buildPurposeChips(){
+  const wrap = $("#edPurposes");
+  if(!wrap) return;
+  wrap.innerHTML = "";
+  PURPOSES.forEach(p => {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "cat-chip"; b.textContent = p.label;
+    b.addEventListener("click", () => applyPurpose(p));
+    wrap.appendChild(b);
+  });
+}
+function applyPurpose(p){
+  if(p.category){ edCategory = p.category; paintCategoryChips(); }
+  edUsage = p.usage; paintUsage();
+  if(p.memo){
+    const ta = $("#edMemo");
+    if(!ta.value.includes(p.memo)) ta.value = p.memo + (ta.value ? "：" : "") + ta.value;
+  }
+  toast("用途「" + p.label + "」を反映しました");
+}
 function addItemRow(name, price){
   const wrap = $("#edItems");
   const row = document.createElement("div");
@@ -1113,6 +1163,11 @@ async function saveEditor(confirmStatus){
   if(e.category && e.category !== openedCategory && e.store){
     rules[normalizeStore(e.store)] = e.category;
     saveRules(rules);
+  }
+  /* 学習：AIの店名の読みを直したら、その読み替えを覚える（次回から自動で直る） */
+  if(e.aiStore && e.store && normalizeStore(e.aiStore) !== normalizeStore(e.store)){
+    storeFixes[normalizeStore(e.aiStore)] = e.store;
+    saveFixes(storeFixes);
   }
   if(e.category) e.categorySource = "manual";
   if(confirmStatus) e.status = "confirmed";
@@ -1429,6 +1484,7 @@ function bindEvents(){
   await DB.init();
   entries = await DB.getAllEntries();
   buildCategoryChips();
+  buildPurposeChips();
   bindEvents();
   const now = new Date();
   $("#monthInput").value = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0");
