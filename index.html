@@ -220,6 +220,10 @@ table.totals tr.total td{font-weight:700; border-top:2px solid var(--ink); borde
   <!-- 一覧 -->
   <section class="view" id="view-list" hidden>
     <h2 class="view-title">レシート一覧</h2>
+    <div id="batchBar" style="margin-bottom:12px;" hidden>
+      <button class="btn btn-primary" id="btnBatchAI" style="width:100%;">未読をまとめてAI読み取り</button>
+      <p class="note" id="batchNote" style="margin-top:6px;"></p>
+    </div>
     <div id="listEl"></div>
     <div class="empty-box" id="listEmpty">レシートがありません。</div>
   </section>
@@ -709,7 +713,7 @@ async function renderList(){
     el.appendChild(row);
   }
 }
-async function renderAll(){ await renderQueue(); await renderList(); }
+async function renderAll(){ await renderQueue(); await renderList(); paintBatchBar(); }
 
 /* ---------- カメラ ---------- */
 let camStream = null;
@@ -781,6 +785,38 @@ function parseAiJson(text){
   if(start < 0 || end <= start) throw new Error("AIの応答からJSONを取り出せませんでした");
   return JSON.parse(t.slice(start, end + 1));
 }
+/* ---------- AI一括読み取り（未読をまとめて順番に判定） ---------- */
+let batchRunning = false;
+function paintBatchBar(){
+  const bar = $("#batchBar");
+  if(!bar) return;
+  const n = entries.filter(e => e.status === "unread").length;
+  bar.hidden = !(n > 0 && settings.apiKey) && !batchRunning;
+  const btn = $("#btnBatchAI");
+  btn.disabled = batchRunning;
+  btn.textContent = batchRunning ? "読み取り中…" : ("未読 " + n + " 件をまとめてAI読み取り");
+}
+async function runBatchAI(){
+  if(batchRunning) return;
+  if(!settings.apiKey){ toast("設定タブでAPIキーを保存してください"); return; }
+  const targets = entries.filter(e => e.status === "unread");
+  if(!targets.length){ toast("未読のレシートはありません"); return; }
+  batchRunning = true; paintBatchBar();
+  let done = 0, failed = 0;
+  for(const t of targets){
+    await runAI(t.id);
+    const e = findEntry(t.id);
+    if(e && e.status === "read") done++; else failed++;
+    const note = $("#batchNote");
+    if(note) note.textContent = "読み取り中 " + (done + failed) + " / " + targets.length + " 件";
+  }
+  batchRunning = false;
+  const note = $("#batchNote");
+  if(note) note.textContent = "";
+  paintBatchBar();
+  toast("一括読み取り完了：" + done + "件" + (failed ? "・失敗 " + failed + "件" : ""));
+}
+
 async function runAI(id){
   const entry = findEntry(id);
   if(!entry || readingIds.has(id)) return;
@@ -844,11 +880,11 @@ async function runAI(id){
     entry.status = "read";
     entry.aiError = "";
     await persistEntry(entry);
-    toast("読み取りました：" + (entry.store || "レシート"));
+    if(!batchRunning) toast("読み取りました：" + (entry.store || "レシート"));
   } catch(err) {
     entry.aiError = String(err && err.message ? err.message : err);
     await persistEntry(entry);
-    toast("AI読み取りに失敗しました");
+    if(!batchRunning) toast("AI読み取りに失敗しました");
   } finally {
     readingIds.delete(id);
     await renderAll();
@@ -1458,6 +1494,7 @@ function bindEvents(){
     toast("削除しました");
   });
   $("#btnAddItem").addEventListener("click", () => addItemRow("", 0));
+  $("#btnBatchAI").addEventListener("click", runBatchAI);
   $("#taxAll10").addEventListener("click", () => { $("#edTax10").value = $("#edTotal").value; $("#edTax8").value = "0"; });
   $("#taxAll8").addEventListener("click", () => { $("#edTax8").value = $("#edTotal").value; $("#edTax10").value = "0"; });
   document.querySelectorAll("#edUsage button").forEach(b => {
