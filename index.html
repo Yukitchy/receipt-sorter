@@ -85,6 +85,8 @@ section.view[hidden]{display:none;}
 .chip-reading{background:#dbeafe; color:#1d4ed8;}
 .chip-read{background:var(--warn-bg); color:var(--warn-ink);}
 .chip-confirmed{background:#dcf2e3; color:var(--ok);}
+.chip-synced{background:#e0e7ff; color:#3730a3;}
+.chip-unsynced{background:var(--warn-bg); color:var(--warn-ink);}
 
 /* 一覧 */
 .entry-row{
@@ -249,6 +251,13 @@ table.totals tr.total td{font-weight:700; border-top:2px solid var(--ink); borde
     </div>
 
     <div class="group-box">
+      <h3>GitHubへ送信</h3>
+      <p class="note">レシート（データと画像）をプライベートリポジトリ Yukitchy/receipt-data へ送ります。確定したレシートは自動で送られ、未送信分はここからまとめて送れます。送信用トークンは設定タブで入れます。</p>
+      <button class="btn btn-dark" id="btnSyncAll">未送信をまとめて送信</button>
+      <p class="note" id="syncInfo"></p>
+    </div>
+
+    <div class="group-box">
       <h3>バックアップ</h3>
       <p class="note">全レシート（画像つき）を JSON で書き出します。端末の買い替え時などに読み込めます。</p>
       <button class="btn btn-ghost" id="btnBackup">JSONバックアップを書き出す</button>
@@ -277,6 +286,13 @@ table.totals tr.total td{font-weight:700; border-top:2px solid var(--ink); borde
       <label for="setMfCredit">マネーフォワードの貸方科目（書き出し用）</label>
       <input type="text" id="setMfCredit" placeholder="現金">
     </div>
+    <div class="field">
+      <label for="setGhToken">GitHub送信用トークン</label>
+      <input type="password" id="setGhToken" placeholder="github_pat_..." autocomplete="off">
+      <p class="note">確定したレシートをプライベートリポジトリ Yukitchy/receipt-data へ送るためのトークンです。この端末のブラウザ内（localStorage）にだけ保存され、GitHub の API へ直接送られます。</p>
+      <button class="btn btn-ghost" id="btnGhTest" type="button" style="margin:6px 0 0;">接続テスト</button>
+      <p class="note" id="ghTestResult"></p>
+    </div>
     <button class="btn btn-primary" id="btnSaveSettings">設定を保存</button>
 
     <div class="group-box">
@@ -287,7 +303,7 @@ table.totals tr.total td{font-weight:700; border-top:2px solid var(--ink); borde
 
     <div class="group-box">
       <h3>このアプリについて</h3>
-      <p class="note">レシート画像とデータはこの端末の中（IndexedDB）に保存されます。サーバーには送信されません。AI読み取りを使う場合のみ、画像が Anthropic の API に送られます。</p>
+      <p class="note">レシート画像とデータはこの端末の中（IndexedDB）に保存されます。AI読み取りを使う場合は画像が Anthropic の API に、GitHub送信用トークンを設定した場合は確定レシートのデータと画像が GitHub のプライベートリポジトリ（Yukitchy/receipt-data）に送られます。</p>
     </div>
   </section>
 </main>
@@ -370,6 +386,8 @@ table.totals tr.total td{font-weight:700; border-top:2px solid var(--ink); borde
     <button class="btn btn-ghost" id="btnEdSave">保存する</button>
     <button class="btn btn-primary" id="btnEdConfirm">確定する</button>
   </div>
+  <p class="note" id="edSyncState" style="margin-top:14px;"></p>
+  <button class="btn btn-ghost" id="btnEdSend" style="margin-top:6px;">GitHubへ送信</button>
   <button class="btn btn-danger-ghost" id="btnEdDelete" style="margin-top:14px;">このレシートを削除</button>
 </div>
 
@@ -402,6 +420,8 @@ const LS_RULES = "rs_rules_v1";
 const LS_FALLBACK = "rs_entries_fallback_v1";
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 const AI_MODEL = "claude-sonnet-4-5";
+const GH_REPO = "Yukitchy/receipt-data";
+const GH_API = "https://api.github.com";
 
 /* ---------- ユーティリティ ---------- */
 const $ = (sel) => document.querySelector(sel);
@@ -444,6 +464,7 @@ function loadSettings(){
   try { s = JSON.parse(localStorage.getItem(LS_SETTINGS) || "{}"); } catch(e) { s = {}; }
   return {
     apiKey: s.apiKey || "",
+    ghToken: s.ghToken || "",
     defaultSplit: (s.defaultSplit >= 1 && s.defaultSplit <= 100) ? s.defaultSplit : 80,
     freeeAccount: s.freeeAccount || "現金",
     mfCredit: s.mfCredit || "現金"
@@ -589,7 +610,8 @@ function newEntry(){
     date: "", store: "", total: 0, tax8: 0, tax10: 0,
     items: [], invoice: "", category: "", categorySource: "",
     usage: "business", split: settings.defaultSplit,
-    memo: "", status: "unread", aiError: "", payment_method: ""
+    memo: "", status: "unread", aiError: "", payment_method: "",
+    synced_at: 0, synced_hash: ""
   };
 }
 async function persistEntry(entry){ await DB.putEntry(entry); }
@@ -669,7 +691,8 @@ async function renderList(){
       '<span class="meta"><span class="store">' + escapeHtml(e.store || "（店名なし）") + '</span><br>' +
       '<span class="sub">' + escapeHtml(fmtDateJP(e.date)) + (e.category ? " ・ " + escapeHtml(e.category) : "") +
       (e.usage === "private" ? " ・ 家事" : e.usage === "split" ? " ・ 按分" + toInt(e.split) + "%" : "") + '</span></span>' +
-      '<span class="right"><span class="amt">' + yen(e.total) + '</span><br>' + statusChip(e) + '</span>';
+      '<span class="right"><span class="amt">' + yen(e.total) + '</span><br>' + statusChip(e) +
+      (syncChip(e) ? '<br>' + syncChip(e) : '') + '</span>';
     if(url) row.querySelector("img").src = url;
     row.addEventListener("click", () => openEditor(e.id));
     el.appendChild(row);
@@ -813,6 +836,131 @@ async function runAI(id){
   }
 }
 
+/* ---------- GitHub同期（プライベートリポジトリ receipt-data へ送信） ---------- */
+function ghHeaders(){
+  return {
+    "Authorization": "Bearer " + settings.ghToken,
+    "Accept": "application/vnd.github+json",
+    "content-type": "application/json"
+  };
+}
+function utf8ToBase64(str){
+  const bytes = new TextEncoder().encode(str);
+  let bin = "";
+  for(let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin);
+}
+async function blobToBase64(blob){
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  let bin = "";
+  const CHUNK = 0x8000;
+  for(let i = 0; i < bytes.length; i += CHUNK){
+    bin += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
+  }
+  return btoa(bin);
+}
+/* 送信済み判定用：内容フィールドだけのハッシュ（同期メタ自身は含めない） */
+function contentHash(e){
+  const o = {};
+  ["date","store","total","tax8","tax10","items","invoice","category","categorySource","usage","split","memo","payment_method","status"].forEach(k => { o[k] = e[k]; });
+  const s = JSON.stringify(o);
+  let h = 0x811c9dc5;
+  for(let i = 0; i < s.length; i++){ h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+  return ("0000000" + h.toString(16)).slice(-8);
+}
+function isSynced(e){
+  return !!e.synced_at && !!e.synced_hash && e.synced_hash === contentHash(e);
+}
+function syncChip(e){
+  if(!settings.ghToken) return "";
+  return isSynced(e)
+    ? '<span class="chip chip-synced">送信済</span>'
+    : '<span class="chip chip-unsynced">未送信</span>';
+}
+async function ghGetSha(path){
+  const res = await fetch(GH_API + "/repos/" + GH_REPO + "/contents/" + path, { headers: ghHeaders() });
+  if(res.status === 404) return null;
+  if(!res.ok) throw new Error("GitHub取得エラー (" + res.status + ")");
+  const j = await res.json();
+  return j.sha || null;
+}
+async function ghPutFile(path, base64Content, message){
+  const doPut = (sha) => {
+    const body = { message: message, content: base64Content };
+    if(sha) body.sha = sha;
+    return fetch(GH_API + "/repos/" + GH_REPO + "/contents/" + path, {
+      method: "PUT", headers: ghHeaders(), body: JSON.stringify(body)
+    });
+  };
+  let res = await doPut(await ghGetSha(path));
+  if(res.status === 409 || res.status === 422){
+    /* 競合したら sha を取り直して1回だけ再試行する */
+    res = await doPut(await ghGetSha(path));
+  }
+  if(!res.ok){
+    let detail = "";
+    try { detail = (await res.text()).slice(0, 200); } catch(e) {}
+    throw new Error("GitHub送信エラー (" + res.status + ")" + (detail ? ": " + detail : ""));
+  }
+}
+function entryForUpload(e){
+  const o = Object.assign({}, e);
+  delete o.imgData;      /* 画像データは entries には含めない（images/ へ別送） */
+  delete o.imageDataUrl;
+  return o;
+}
+async function uploadEntry(e){
+  if(!settings.ghToken) throw new Error("GitHub送信用トークンが未設定です");
+  const json = JSON.stringify(entryForUpload(e), null, 2);
+  await ghPutFile("entries/" + e.id + ".json", utf8ToBase64(json), "receipt " + e.id + " (" + (e.date || "no-date") + ")");
+  const blob = await DB.getImage(e.id);
+  if(blob){
+    await ghPutFile("images/" + e.id + ".jpg", await blobToBase64(blob), "receipt image " + e.id);
+  }
+  e.synced_at = Date.now();
+  e.synced_hash = contentHash(e);
+  await persistEntry(e);
+}
+async function testGhConnection(){
+  const el = $("#ghTestResult");
+  const token = $("#setGhToken").value.trim();
+  if(!token){ el.textContent = "トークンを入力してからテストしてください。"; return; }
+  el.textContent = "接続テスト中…";
+  try {
+    const res = await fetch(GH_API + "/repos/" + GH_REPO, {
+      headers: { "Authorization": "Bearer " + token, "Accept": "application/vnd.github+json" }
+    });
+    if(res.ok){
+      const j = await res.json();
+      el.textContent = "接続OK：" + (j.full_name || GH_REPO) + " にアクセスできました。";
+    } else if(res.status === 404){
+      el.textContent = "接続NG（404）：リポジトリが見つからないか、トークンにこのリポジトリへの権限がありません。";
+    } else {
+      el.textContent = "接続NG（" + res.status + "）：トークンを確認してください。";
+    }
+  } catch(err) {
+    el.textContent = "接続NG：" + String(err && err.message ? err.message : err);
+  }
+}
+async function syncAllUnsynced(){
+  if(!settings.ghToken){ toast("設定タブでGitHub送信用トークンを入れてください"); return; }
+  const targets = entries.filter(e => !isSynced(e));
+  if(!targets.length){ toast("未送信のレシートはありません"); return; }
+  const btn = $("#btnSyncAll");
+  btn.disabled = true;
+  let ok = 0, fail = 0;
+  try {
+    for(const e of targets){
+      try { await uploadEntry(e); ok++; } catch(err) { fail++; }
+      $("#syncInfo").textContent = "送信中… " + (ok + fail) + " / " + targets.length + " 件（成功 " + ok + "・失敗 " + fail + "）";
+    }
+  } finally {
+    btn.disabled = false;
+  }
+  await renderAll(); renderSummary();
+  toast("まとめて送信：" + ok + "件送信" + (fail ? "・" + fail + "件失敗" : ""));
+}
+
 /* ---------- エディタ ---------- */
 let editorEntryId = null;
 let edCategory = "";
@@ -922,6 +1070,10 @@ async function fillEditor(e){
     err.classList.remove("show");
   }
   $("#btnAI").textContent = settings.apiKey ? "AIで読み取る" : "AIで読み取る（設定でAPIキーが必要）";
+  const ss = $("#edSyncState");
+  if(!settings.ghToken) ss.textContent = "GitHub送信：設定タブで送信用トークンを入れると、確定時に自動で送られます。";
+  else if(isSynced(e)) ss.textContent = "GitHub送信：送信済（" + new Date(e.synced_at).toLocaleString("ja-JP") + "）";
+  else ss.textContent = "GitHub送信：未送信です。";
   updateDupBanner();
 }
 async function openEditor(id){
@@ -967,8 +1119,14 @@ async function saveEditor(confirmStatus){
   else if(e.date || e.total || e.store) e.status = (e.status === "confirmed") ? "confirmed" : "read";
   await persistEntry(e);
   closeEditor();
+  /* 確定時は GitHub へ自動送信（失敗しても確定は妨げず、未送信として残す） */
+  let syncNote = "";
+  if(confirmStatus && settings.ghToken){
+    try { await uploadEntry(e); }
+    catch(err) { syncNote = "（GitHub送信に失敗：未送信）"; }
+  }
   await renderAll(); renderSummary();
-  toast(confirmStatus ? "確定しました" : "保存しました");
+  toast((confirmStatus ? "確定しました" : "保存しました") + syncNote);
 }
 
 /* ---------- 集計 ---------- */
@@ -1003,6 +1161,10 @@ function renderSummary(){
   tr.innerHTML = "<td>合計</td><td>" + yen(total) + "</td>";
   tbody.appendChild(tr);
   $("#privateNote").textContent = privCount ? ("家事分 " + privCount + "件 " + yen(privTotal) + " は集計・書き出しから除いています。") : "";
+  const unsyncedCount = entries.filter(e => !isSynced(e)).length;
+  $("#syncInfo").textContent = !settings.ghToken
+    ? "GitHub送信用トークンが未設定です。設定タブでトークンを入れると送信できます。"
+    : ("未送信 " + unsyncedCount + "件 / 全" + entries.length + "件。確定したレシートは自動で送られます。");
 }
 function exportTargets(month){
   return sortedEntries().filter(e =>
@@ -1116,6 +1278,7 @@ async function importBackup(file){
     for(const raw of data.entries){
       const e = Object.assign(newEntry(), raw);
       e.id = uid(); e.createdAt = Date.now() + count;
+      e.synced_at = 0; e.synced_hash = ""; /* 読み込み先では未送信として扱う */
       const dataUrl = raw.imageDataUrl; delete e.imageDataUrl;
       entries.unshift(e);
       await persistEntry(e);
@@ -1135,6 +1298,8 @@ async function importBackup(file){
 /* ---------- 設定画面 ---------- */
 function renderSettings(){
   $("#setApiKey").value = settings.apiKey;
+  $("#setGhToken").value = settings.ghToken;
+  $("#ghTestResult").textContent = "";
   $("#setSplit").value = settings.defaultSplit;
   $("#setFreeeAccount").value = settings.freeeAccount;
   $("#setMfCredit").value = settings.mfCredit;
@@ -1182,6 +1347,8 @@ function bindEvents(){
   $("#fileInput").addEventListener("change", onFile);
   $("#fileCapture").addEventListener("change", onFile);
   $("#monthInput").addEventListener("change", renderSummary);
+  $("#btnGhTest").addEventListener("click", testGhConnection);
+  $("#btnSyncAll").addEventListener("click", syncAllUnsynced);
   $("#btnExportFreee").addEventListener("click", exportFreee);
   $("#btnExportMF").addEventListener("click", exportMF);
   $("#btnBackup").addEventListener("click", exportBackup);
@@ -1192,6 +1359,7 @@ function bindEvents(){
   });
   $("#btnSaveSettings").addEventListener("click", () => {
     settings.apiKey = $("#setApiKey").value.trim();
+    settings.ghToken = $("#setGhToken").value.trim();
     settings.defaultSplit = Math.min(100, Math.max(1, toInt($("#setSplit").value) || 80));
     settings.freeeAccount = $("#setFreeeAccount").value.trim() || "現金";
     settings.mfCredit = $("#setMfCredit").value.trim() || "現金";
@@ -1202,6 +1370,24 @@ function bindEvents(){
   $("#edClose").addEventListener("click", closeEditor);
   $("#btnEdSave").addEventListener("click", () => saveEditor(false));
   $("#btnEdConfirm").addEventListener("click", () => saveEditor(true));
+  $("#btnEdSend").addEventListener("click", async () => {
+    const e = findEntry(editorEntryId);
+    if(!e) return;
+    if(!settings.ghToken){ toast("設定タブでGitHub送信用トークンを入れてください"); return; }
+    collectEditor(e);
+    await persistEntry(e);
+    try {
+      await uploadEntry(e);
+      toast("GitHubへ送信しました");
+    } catch(err) {
+      $("#edSyncState").textContent = "GitHub送信：失敗しました（" + String(err && err.message ? err.message : err) + "）";
+      toast("送信に失敗しました");
+      await renderAll(); renderSummary();
+      return;
+    }
+    await fillEditor(e);
+    await renderAll(); renderSummary();
+  });
   $("#btnEdDelete").addEventListener("click", async () => {
     const e = findEntry(editorEntryId);
     if(!e) return;
