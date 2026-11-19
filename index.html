@@ -168,6 +168,30 @@ table.totals tr.total td{font-weight:700; border-top:2px solid var(--ink); borde
 .ed-actions{display:flex; gap:10px; margin-top:18px;}
 .ed-actions .btn{margin:0;}
 
+/* エディタ密レイアウト（案4：グリッド密） */
+#editor .field{margin:8px 0;}
+#editor .field label{font-size:11px; margin-bottom:3px;}
+#editor .field input[type="text"], #editor .field input[type="number"],
+#editor .field input[type="date"], #editor .field textarea{padding:8px 10px; border-radius:8px;}
+#editor .field textarea{min-height:38px;}
+#editor .chips{gap:5px;}
+#editor .cat-chip{padding:5px 9px; font-size:12px;}
+#editor .seg button{padding:7px 0; font-size:12px;}
+#editor .banner{margin:8px 0; padding:8px 10px;}
+#editor .ed-actions{margin-top:12px; gap:8px;}
+#editor .item-row{margin:4px 0;}
+#editor .tax-quick button{padding:6px 0; font-size:12px;}
+#editor .ed-head{margin-bottom:6px;}
+.ed-top{display:flex; gap:10px; align-items:center; margin-bottom:2px;}
+#editor .ed-img{width:44px; height:56px; max-height:none; object-fit:cover; border-radius:8px; flex:none; cursor:pointer;}
+#editor .ed-img.big{width:100%; height:auto; max-height:62vh; object-fit:contain;}
+.ed-sum{min-width:0; flex:1;}
+.ed-sum-store{font-weight:700; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.ed-sum-meta{color:var(--sub); font-size:12px;}
+.ed-sum-total{font-size:19px; font-weight:800; line-height:1.25;}
+.ed-grid2{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
+.ed-grid2 .field{margin:8px 0; min-width:0;}
+
 /* タブバー */
 #tabbar{
   position:fixed; left:0; right:0; bottom:0; z-index:30; background:rgba(255,255,255,.96);
@@ -318,36 +342,49 @@ table.totals tr.total td{font-weight:700; border-top:2px solid var(--ink); borde
     <h2>レシートの確認</h2>
     <button class="ed-close" id="edClose">閉じる</button>
   </div>
-  <img class="ed-img" id="edImg" alt="レシート画像">
+  <div class="ed-top">
+    <img class="ed-img" id="edImg" alt="レシート画像">
+    <div class="ed-sum">
+      <div class="ed-sum-store" id="edSumStore">（店名未入力）</div>
+      <div class="ed-sum-meta" id="edSumMeta"></div>
+      <div class="ed-sum-total" id="edSumTotal">¥0</div>
+    </div>
+  </div>
+  <p class="note" style="margin:0 0 2px;">写真タップで拡大</p>
   <div class="banner banner-dup" id="edDup"></div>
   <div class="banner banner-info" id="edInfo"></div>
   <div class="banner banner-error" id="edError"></div>
 
-  <div class="field">
-    <label>AI読み取り</label>
-    <button class="btn btn-ghost" id="btnAI" style="margin:0;">AIで読み取る</button>
+  <div class="field" style="margin-top:4px;">
+    <button class="btn btn-ghost" id="btnAI" style="margin:0; padding:9px;">AIで読み取る</button>
   </div>
-  <div class="field">
-    <label for="edDate">日付</label>
-    <input type="date" id="edDate">
+  <div class="ed-grid2">
+    <div class="field">
+      <label for="edDate">日付</label>
+      <input type="date" id="edDate">
+    </div>
+    <div class="field">
+      <label for="edTotal">合計金額（税込・円）</label>
+      <input type="number" id="edTotal" min="0" step="1" inputmode="numeric" placeholder="0">
+    </div>
   </div>
   <div class="field">
     <label for="edStore">店名・取引先</label>
     <input type="text" id="edStore" placeholder="例：セブン-イレブン">
   </div>
-  <div class="field">
-    <label for="edTotal">合計金額（税込・円）</label>
-    <input type="number" id="edTotal" min="0" step="1" inputmode="numeric" placeholder="0">
-  </div>
-  <div class="field">
-    <label for="edTax10">うち10%対象額（税込）</label>
-    <input type="number" id="edTax10" min="0" step="1" inputmode="numeric" placeholder="0">
-    <label for="edTax8" style="margin-top:10px;">うち8%（軽減）対象額（税込）</label>
-    <input type="number" id="edTax8" min="0" step="1" inputmode="numeric" placeholder="0">
-    <div class="tax-quick">
-      <button type="button" id="taxAll10">全額を10%に</button>
-      <button type="button" id="taxAll8">全額を8%（軽減）に</button>
+  <div class="ed-grid2">
+    <div class="field">
+      <label for="edTax10">うち10%対象額（税込）</label>
+      <input type="number" id="edTax10" min="0" step="1" inputmode="numeric" placeholder="0">
     </div>
+    <div class="field">
+      <label for="edTax8">うち8%（軽減）対象額（税込）</label>
+      <input type="number" id="edTax8" min="0" step="1" inputmode="numeric" placeholder="0">
+    </div>
+  </div>
+  <div class="tax-quick">
+    <button type="button" id="taxAll10">全額を10%に</button>
+    <button type="button" id="taxAll8">全額を8%（軽減）に</button>
   </div>
   <div class="field">
     <label>品目</label>
@@ -367,25 +404,27 @@ table.totals tr.total td{font-weight:700; border-top:2px solid var(--ink); borde
     <label>勘定科目</label>
     <div class="chips" id="edCats"></div>
   </div>
-  <div class="field">
-    <label>事業 / 家事</label>
-    <div class="seg" id="edUsage">
-      <button type="button" data-usage="business">事業</button>
-      <button type="button" data-usage="split">按分</button>
-      <button type="button" data-usage="private">家事</button>
+  <div class="ed-grid2">
+    <div class="field">
+      <label>事業 / 家事</label>
+      <div class="seg" id="edUsage">
+        <button type="button" data-usage="business">事業</button>
+        <button type="button" data-usage="split">按分</button>
+        <button type="button" data-usage="private">家事</button>
+      </div>
+    </div>
+    <div class="field">
+      <label>支払方法</label>
+      <div class="seg" id="edPayment">
+        <button type="button" data-pay="現金">現金</button>
+        <button type="button" data-pay="クレジットカード">クレジットカード</button>
+        <button type="button" data-pay="事業主借">事業主借</button>
+      </div>
     </div>
   </div>
   <div class="field" id="edSplitWrap" hidden>
     <label for="edSplit">事業割合（%）</label>
     <input type="number" id="edSplit" min="1" max="100" step="1" inputmode="numeric">
-  </div>
-  <div class="field">
-    <label>支払方法</label>
-    <div class="seg" id="edPayment">
-      <button type="button" data-pay="現金">現金</button>
-      <button type="button" data-pay="クレジットカード">クレジットカード</button>
-      <button type="button" data-pay="事業主借">事業主借</button>
-    </div>
   </div>
   <div class="field">
     <label for="edMemo">メモ・摘要</label>
@@ -1099,6 +1138,15 @@ function paintPayment(){
     b.classList.toggle("sel", b.dataset.pay === edPayment);
   });
 }
+function paintEdSum(){
+  const storeEl = $("#edSumStore");
+  if(!storeEl) return;
+  const e = findEntry(editorEntryId);
+  storeEl.textContent = $("#edStore").value.trim() || "（店名未入力）";
+  const st = e ? (e.status === "confirmed" ? "確定" : (e.status === "read" ? "読取済" : "未読")) : "";
+  $("#edSumMeta").textContent = [$("#edDate").value, st].filter(Boolean).join(" ・ ");
+  $("#edSumTotal").textContent = "¥" + (toInt($("#edTotal").value) || 0).toLocaleString("ja-JP");
+}
 function findDuplicate(date, total, store, selfId){
   const ns = normalizeStore(store);
   if(!date || !total || !ns) return null;
@@ -1120,6 +1168,7 @@ async function fillEditor(e){
   if(!e) return;
   const url = await thumbUrl(e.id);
   const img = $("#edImg");
+  img.classList.remove("big");
   if(url){ img.src = url; img.style.display = "block"; } else { img.style.display = "none"; }
   $("#edDate").value = e.date || "";
   $("#edStore").value = e.store || "";
@@ -1134,7 +1183,7 @@ async function fillEditor(e){
   /* 支払方法：保存値があればそれ、なければ設定の決済口座を初期値にする */
   edPayment = PAYMENT_METHODS.includes(e.payment_method) ? e.payment_method
     : (PAYMENT_METHODS.includes(settings.freeeAccount) ? settings.freeeAccount : "現金");
-  paintCategoryChips(); paintUsage(); paintPayment();
+  paintCategoryChips(); paintUsage(); paintPayment(); paintEdSum();
   const itemsWrap = $("#edItems");
   itemsWrap.innerHTML = "";
   (e.items || []).forEach(it => addItemRow(it.name, it.price));
@@ -1505,7 +1554,9 @@ function bindEvents(){
   });
   ["edDate", "edStore", "edTotal"].forEach(id => {
     $("#" + id).addEventListener("input", updateDupBanner);
+    $("#" + id).addEventListener("input", paintEdSum);
   });
+  $("#edImg").addEventListener("click", () => { $("#edImg").classList.toggle("big"); });
   $("#btnAI").addEventListener("click", async () => {
     const e = findEntry(editorEntryId);
     if(!e) return;
