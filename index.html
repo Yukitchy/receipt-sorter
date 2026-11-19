@@ -355,6 +355,14 @@ table.totals tr.total td{font-weight:700; border-top:2px solid var(--ink); borde
     <input type="number" id="edSplit" min="1" max="100" step="1" inputmode="numeric">
   </div>
   <div class="field">
+    <label>支払方法</label>
+    <div class="seg" id="edPayment">
+      <button type="button" data-pay="現金">現金</button>
+      <button type="button" data-pay="クレジットカード">クレジットカード</button>
+      <button type="button" data-pay="事業主借">事業主借</button>
+    </div>
+  </div>
+  <div class="field">
     <label for="edMemo">メモ・摘要</label>
     <textarea id="edMemo" placeholder="例：ツアー用ドリンク購入"></textarea>
   </div>
@@ -388,6 +396,7 @@ const CATEGORIES = [
   "地代家賃","利子割引料","減価償却費","雑費","新聞図書費","諸会費",
   "支払手数料","車両費","会議費"
 ];
+const PAYMENT_METHODS = ["現金", "クレジットカード", "事業主借"];
 const LS_SETTINGS = "rs_settings_v1";
 const LS_RULES = "rs_rules_v1";
 const LS_FALLBACK = "rs_entries_fallback_v1";
@@ -580,7 +589,7 @@ function newEntry(){
     date: "", store: "", total: 0, tax8: 0, tax10: 0,
     items: [], invoice: "", category: "", categorySource: "",
     usage: "business", split: settings.defaultSplit,
-    memo: "", status: "unread", aiError: ""
+    memo: "", status: "unread", aiError: "", payment_method: ""
   };
 }
 async function persistEntry(entry){ await DB.putEntry(entry); }
@@ -808,6 +817,7 @@ async function runAI(id){
 let editorEntryId = null;
 let edCategory = "";
 let edUsage = "business";
+let edPayment = "現金";
 let openedCategory = "";
 
 function buildCategoryChips(){
@@ -850,6 +860,11 @@ function paintUsage(){
   });
   $("#edSplitWrap").hidden = edUsage !== "split";
 }
+function paintPayment(){
+  document.querySelectorAll("#edPayment button").forEach(b => {
+    b.classList.toggle("sel", b.dataset.pay === edPayment);
+  });
+}
 function findDuplicate(date, total, store, selfId){
   const ns = normalizeStore(store);
   if(!date || !total || !ns) return null;
@@ -882,7 +897,10 @@ async function fillEditor(e){
   $("#edSplit").value = e.split || settings.defaultSplit;
   edCategory = e.category || "";
   edUsage = e.usage || "business";
-  paintCategoryChips(); paintUsage();
+  /* 支払方法：保存値があればそれ、なければ設定の決済口座を初期値にする */
+  edPayment = PAYMENT_METHODS.includes(e.payment_method) ? e.payment_method
+    : (PAYMENT_METHODS.includes(settings.freeeAccount) ? settings.freeeAccount : "現金");
+  paintCategoryChips(); paintUsage(); paintPayment();
   const itemsWrap = $("#edItems");
   itemsWrap.innerHTML = "";
   (e.items || []).forEach(it => addItemRow(it.name, it.price));
@@ -932,6 +950,7 @@ function collectEditor(e){
   e.category = edCategory;
   e.usage = edUsage;
   e.split = Math.min(100, Math.max(1, toInt($("#edSplit").value) || settings.defaultSplit));
+  e.payment_method = edPayment;
   return e;
 }
 async function saveEditor(confirmStatus){
@@ -996,6 +1015,10 @@ function itemsSummary(e){
 function splitNote(e){
   return e.usage === "split" ? "（按分" + toInt(e.split) + "%）" : "";
 }
+/* 支払方法：エントリに保存された値を優先し、未設定なら設定値（決済口座／貸方科目）にフォールバック */
+function entryPaymentMethod(e, fallback){
+  return e.payment_method ? e.payment_method : fallback;
+}
 
 /* ---------- freee 取引CSV ---------- */
 const FREEE_HEADER = ["収支区分","管理番号","発生日","決済期日","取引先コード","取引先","勘定科目","税区分","金額","税計算区分","税額","備考","品目","部門","メモタグ","セグメント1","セグメント2","セグメント3","決済日","決済口座","決済金額"];
@@ -1013,10 +1036,11 @@ function exportFreee(){
     const date = e.date.replace(/-/g, "/");
     const desc = (e.memo || itemsSummary(e)) + splitNote(e);
     const item = itemsSummary(e);
+    const pay = entryPaymentMethod(e, settings.freeeAccount);
     const base = ["支出", "", date, "", "", e.store, e.category || "雑費", "", "", "内税", "", desc, item, "", "", "", "", ""];
     if(eff.a10 > 0 && eff.a8 > 0){
       const r1 = base.slice(); r1[7] = freeeTaxClass(e, 10); r1[8] = eff.a10;
-      r1.push(date, settings.freeeAccount, eff.total);
+      r1.push(date, pay, eff.total);
       rows.push(r1);
       const r2 = base.slice(); r2[0] = ""; r2[7] = freeeTaxClass(e, 8); r2[8] = eff.a8; r2[11] = ""; r2[12] = "";
       r2.push("", "", "");
@@ -1024,7 +1048,7 @@ function exportFreee(){
     } else {
       const r = base.slice();
       r[7] = freeeTaxClass(e, eff.a8 > 0 ? 8 : 10); r[8] = eff.total;
-      r.push(date, settings.freeeAccount, eff.total);
+      r.push(date, pay, eff.total);
       rows.push(r);
     }
   });
@@ -1050,6 +1074,7 @@ function exportMF(){
     const date = e.date.replace(/-/g, "/");
     const desc = (e.store + " " + itemsSummary(e)).trim().slice(0, 200);
     const memo = ((e.memo || "") + splitNote(e)).slice(0, 200);
+    const pay = entryPaymentMethod(e, settings.mfCredit);
     function blankRow(){
       const r = new Array(27).fill("");
       r[0] = no; r[1] = date; r[2] = e.category || "雑費"; r[5] = e.store;
@@ -1060,12 +1085,12 @@ function exportMF(){
       const r1 = blankRow(); r1[6] = mfTaxClass(e, 10); r1[8] = eff.a10;
       rows.push(r1);
       const r2 = blankRow(); r2[6] = mfTaxClass(e, 8); r2[8] = eff.a8;
-      r2[10] = settings.mfCredit; r2[14] = "対象外"; r2[16] = eff.total; r2[19] = "";
+      r2[10] = pay; r2[14] = "対象外"; r2[16] = eff.total; r2[19] = "";
       rows.push(r2);
     } else {
       const r = blankRow();
       r[6] = mfTaxClass(e, eff.a8 > 0 ? 8 : 10); r[8] = eff.total;
-      r[10] = settings.mfCredit; r[14] = "対象外"; r[16] = eff.total;
+      r[10] = pay; r[14] = "対象外"; r[16] = eff.total;
       rows.push(r);
     }
   });
@@ -1193,6 +1218,9 @@ function bindEvents(){
   $("#taxAll8").addEventListener("click", () => { $("#edTax8").value = $("#edTotal").value; $("#edTax10").value = "0"; });
   document.querySelectorAll("#edUsage button").forEach(b => {
     b.addEventListener("click", () => { edUsage = b.dataset.usage; paintUsage(); });
+  });
+  document.querySelectorAll("#edPayment button").forEach(b => {
+    b.addEventListener("click", () => { edPayment = b.dataset.pay; paintPayment(); });
   });
   ["edDate", "edStore", "edTotal"].forEach(id => {
     $("#" + id).addEventListener("input", updateDupBanner);
