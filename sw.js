@@ -1,6 +1,6 @@
 // レシート仕分けカメラ Service Worker
 // アプリ本体（同一オリジン）だけをキャッシュし、Anthropic API などの外部通信は常にネットワークを使う。
-const CACHE_NAME = "receipt-sorter-v4";
+const CACHE_NAME = "receipt-sorter-v5";
 const APP_SHELL = [
   "./",
   "./index.html",

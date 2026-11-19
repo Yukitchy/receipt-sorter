@@ -1366,6 +1366,9 @@ function bindEvents(){
     saveSettings(settings);
     toast("設定を保存しました");
   });
+  /* キー類は打った瞬間に自動保存する（保存ボタンの押し忘れで消えないように） */
+  $("#setApiKey").addEventListener("input", () => { settings.apiKey = $("#setApiKey").value.trim(); saveSettings(settings); });
+  $("#setGhToken").addEventListener("input", () => { settings.ghToken = $("#setGhToken").value.trim(); saveSettings(settings); });
   /* エディタ */
   $("#edClose").addEventListener("click", closeEditor);
   $("#btnEdSave").addEventListener("click", () => saveEditor(false));
